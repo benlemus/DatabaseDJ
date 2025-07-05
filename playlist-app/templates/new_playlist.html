@@ -1,7 +1,12 @@
-{% extends 'base.html' %}
+{% extends 'base.html' %} {% block content %}
+<h1>Add a new playlist!</h1>
 
-{% block content %}
-
-<h1>Add a form that when submitted creates a new playlist!</h1>
+<div class="container">
+  <!-- new playlist form -->
+  <form action="" , method="POST">
+    {% include 'form_template.j2' %}
+    <button type="submit" class="btn btn-primary mt-3">Create Playlist</button>
+  </form>
+</div>
 
 {% endblock %}

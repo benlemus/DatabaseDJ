@@ -15,6 +15,8 @@ class Playlist(db.Model):
     name = db.Column(db.String(20), nullable=False)
     description = db.Column(db.Text, nullable=True)
 
+    songs = db.relationship('Song', backref='playlists', secondary='playlists_songs', lazy='dynamic', cascade="all, delete")
+
 
 class Song(db.Model):
     """Song."""

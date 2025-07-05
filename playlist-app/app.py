@@ -1,5 +1,6 @@
-from flask import Flask, redirect, render_template
+from flask import Flask, redirect, render_template, flash
 from flask_debugtoolbar import DebugToolbarExtension
+from sqlalchemy.exc import IntegrityError, OperationalError
 
 from models import db, connect_db, Playlist, Song, PlaylistSong
 from forms import NewSongForPlaylistForm, SongForm, PlaylistForm
@@ -49,6 +50,16 @@ def show_playlist(playlist_id):
 
     # ADD THE NECESSARY CODE HERE FOR THIS ROUTE TO WORK
 
+    playlist = Playlist.query.filter_by(id=playlist_id).first()
+
+    songs = playlist.songs.all()
+
+    if not playlist:
+        flash(f'Could Not Get Playlist, "playlist id": {playlist_id}', category='danger')
+        return redirect('/playlists')
+    
+    return render_template('playlist.html', playlist=playlist, songs=songs)
+
 
 @app.route("/playlists/add", methods=["GET", "POST"])
 def add_playlist():
@@ -59,6 +70,38 @@ def add_playlist():
     """
 
     # ADD THE NECESSARY CODE HERE FOR THIS ROUTE TO WORK
+
+    form = PlaylistForm()
+
+    if form.validate_on_submit():
+        name = form.playlist_name.data
+        desc = form.playlist_desc.data
+     
+        new_playlist = Playlist(name=name, description=desc)
+
+        try:
+            db.session.add(new_playlist)
+            db.session.commit()
+            
+            flash(f'Playlist "{new_playlist.name}" Added!', category='success')
+            return redirect('/playlists')
+        
+        except IntegrityError:
+            db.session.rollback()
+            flash('Playlist Name Already Exists', category='danger')
+            return redirect('/playlists/add')
+
+        except OperationalError:
+            db.session.rollback()
+            flash('Database Error', category='danger')
+            return redirect('/playlists/add')
+        
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Could Not Add Playlist', category='danger')
+            return redirect('/playlists/add')
+        
+    return render_template('new_playlist.html', form=form)
 
 
 ##############################################################################
@@ -79,6 +122,15 @@ def show_song(song_id):
 
     # ADD THE NECESSARY CODE HERE FOR THIS ROUTE TO WORK
 
+    song = Song.query.filter_by(id=song_id).first()
+
+    playlists = song.playlists
+
+    if not song:
+        flash(f'Could Not Get Song, "song id": {song_id}', category='danger')
+        return redirect('/songs')
+
+    return render_template('song.html', song=song, playlists=playlists)
 
 @app.route("/songs/add", methods=["GET", "POST"])
 def add_song():
@@ -90,6 +142,37 @@ def add_song():
 
     # ADD THE NECESSARY CODE HERE FOR THIS ROUTE TO WORK
 
+    form = SongForm()
+
+    if form.validate_on_submit():
+        title = form.song_title.data
+        artist = form.song_artist.data
+
+        new_song = Song(title=title, artist=artist)
+
+        try:
+            db.session.add(new_song)
+            db.session.commit()
+
+            flash(f'Song "{new_song.title}" Added!', category='success')
+            return redirect('/songs')
+
+        except IntegrityError:
+            db.session.rollback()
+            flash('Playlist Name Already Exists', category='danger')
+            return redirect('/songs/add')
+
+        except OperationalError:
+            db.session.rollback()
+            flash('Database Error', category='danger')
+            return redirect('/songs/add')
+        
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Could Not Add Playlist', category='danger')
+            return redirect('/songs/add')
+        
+    return render_template('new_song.html', form=form)
 
 @app.route("/playlists/<int:playlist_id>/add-song", methods=["GET", "POST"])
 def add_song_to_playlist(playlist_id):
@@ -104,15 +187,31 @@ def add_song_to_playlist(playlist_id):
 
     # Restrict form to songs not already on this playlist
 
-    curr_on_playlist = ...
-    form.song.choices = ...
+    curr_on_playlist = [song.id for song in playlist.songs]
+    form.song.choices = (db.session.query(Song.id, Song.title).filter(Song.id.notin_(curr_on_playlist)).all())
 
     if form.validate_on_submit():
 
           # ADD THE NECESSARY CODE HERE FOR THIS ROUTE TO WORK
+        try:
+            playlist_song = PlaylistSong(song_id=form.song.data,
+                                        playlist_id=playlist_id)
+            db.session.add(playlist_song)
+            db.session.commit()
 
-          return redirect(f"/playlists/{playlist_id}")
+            flash(f'Song Added To Playlist!', category='success')
+            return redirect(f"/playlists/{playlist_id}")
 
+        except OperationalError:
+            db.session.rollback()
+            flash('Database Error', category='danger')
+            return redirect(f'/playlists/{playlist_id}/add-song')
+        
+        except Exception as e:
+            db.session.rollback()
+            flash(f'Could Not Add Playlist', category='danger')
+            return redirect(f'/playlists/{playlist_id}/add-song')
+        
     return render_template("add_song_to_playlist.html",
                              playlist=playlist,
                              form=form)
