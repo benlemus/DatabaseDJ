@@ -5,4 +5,7 @@ In this DataBase DJ project, you can add sons, create playlists and add songs to
 Each song can be used in multiple playlists and each playlist can use multiple songs.
 
 ## Stack Used:
-- [Python, Wtforms, SqlAlchemy, Bootstrap]
+- Python
+- Wtforms
+- SqlAlchemy
+- Bootstrap
