@@ -13,7 +13,8 @@ app.config['SQLALCHEMY_ECHO'] = False
 app.debug = True
 
 connect_db(app)
-db.create_all()
+with app.app_context():
+    db.create_all()
 
 app.config['SECRET_KEY'] = "I'LL NEVER TELL!!"
 
@@ -188,14 +189,14 @@ def add_song_to_playlist(playlist_id):
     # Restrict form to songs not already on this playlist
 
     curr_on_playlist = [song.id for song in playlist.songs]
-    form.song.choices = (db.session.query(Song.id, Song.title).filter(Song.id.notin_(curr_on_playlist)).all())
+
+    form.song.choices = [(song.id, song.title) for song in db.session.query(Song).filter(Song.id.notin_(curr_on_playlist)).all()]
 
     if form.validate_on_submit():
 
           # ADD THE NECESSARY CODE HERE FOR THIS ROUTE TO WORK
         try:
-            playlist_song = PlaylistSong(song_id=form.song.data,
-                                        playlist_id=playlist_id)
+            playlist_song = PlaylistSong(song_id=form.song.data, playlist_id=playlist_id)
             db.session.add(playlist_song)
             db.session.commit()
 
@@ -212,6 +213,4 @@ def add_song_to_playlist(playlist_id):
             flash(f'Could Not Add Playlist', category='danger')
             return redirect(f'/playlists/{playlist_id}/add-song')
         
-    return render_template("add_song_to_playlist.html",
-                             playlist=playlist,
-                             form=form)
+    return render_template("add_song_to_playlist.html", playlist=playlist, form=form)
